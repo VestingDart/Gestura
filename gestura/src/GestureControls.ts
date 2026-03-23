@@ -25,6 +25,8 @@ export class GestureControls {
   private prevPalmY: number | null = null;
   private prevPinchDist: number | null = null;
   private prevGesture: GestureMode = 'none';
+  private lockedGesture: GestureMode = 'none';
+  private lockFramesLeft = 0;
 
   update(hand: HandState): ControlState {
     if (!hand.detected) {
@@ -34,10 +36,21 @@ export class GestureControls {
       this.prevPalmY = null;
       this.prevPinchDist = null;
       this.prevGesture = 'none';
+      this.lockedGesture = 'none';
+      this.lockFramesLeft = 0;
       return this.getState();
     }
 
-    const gesture = hand.gesture;
+    const rawGesture = hand.gesture;
+
+    // Lock the gesture for a few frames after a switch to prevent rapid toggling
+    if (rawGesture !== this.prevGesture) {
+      this.lockedGesture = rawGesture;
+      this.lockFramesLeft = 6;
+    } else if (this.lockFramesLeft > 0) {
+      this.lockFramesLeft--;
+    }
+    const gesture: GestureMode = this.lockFramesLeft > 0 ? this.lockedGesture : rawGesture;
 
     // Reset deltas on gesture change to avoid jumps
     if (gesture !== this.prevGesture) {
@@ -83,6 +96,8 @@ export class GestureControls {
     this.prevPalmX = null;
     this.prevPalmY = null;
     this.prevPinchDist = null;
+    this.lockedGesture = 'none';
+    this.lockFramesLeft = 0;
   }
 
   getState(): ControlState {

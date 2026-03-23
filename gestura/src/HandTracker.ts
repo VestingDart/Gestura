@@ -34,6 +34,10 @@ const PINKY_TIP = 20;
 const PINKY_MCP = 17;
 const THUMB_TIP = 4;
 
+// Pinch thresholds with hysteresis — enter at 0.11, exit at 0.16
+const PINCH_ENTER = 0.11;
+const PINCH_EXIT = 0.16;
+
 type Pt = { x: number; y: number };
 
 function d2(a: Pt, b: Pt): number {
@@ -44,7 +48,7 @@ function isExtended(tip: Pt, mcp: Pt, wrist: Pt): boolean {
   return d2(tip, wrist) > d2(mcp, wrist) * 1.2;
 }
 
-function classifyGesture(lm: NormalizedLandmarkList): GestureMode {
+function classifyGesture(lm: NormalizedLandmarkList, currentGesture: GestureMode): GestureMode {
   const wrist = lm[WRIST];
   const thumbTip = lm[THUMB_TIP];
   const indexTip = lm[INDEX_TIP];
@@ -56,8 +60,14 @@ function classifyGesture(lm: NormalizedLandmarkList): GestureMode {
   const pinkyTip = lm[PINKY_TIP];
   const pinkyMcp = lm[PINKY_MCP];
 
-  // Pinch: thumb tip close to index tip
-  if (d2(thumbTip, indexTip) < 0.07) return 'pinch';
+  const pinchDist = d2(thumbTip, indexTip);
+
+  // Hysteresis: use different thresholds to enter vs exit pinch mode
+  if (currentGesture === 'pinch') {
+    if (pinchDist < PINCH_EXIT) return 'pinch';
+  } else {
+    if (pinchDist < PINCH_ENTER) return 'pinch';
+  }
 
   const indexExt = isExtended(indexTip, indexMcp, wrist);
   const middleExt = isExtended(middleTip, middleMcp, wrist);
@@ -66,10 +76,6 @@ function classifyGesture(lm: NormalizedLandmarkList): GestureMode {
 
   // Only index finger extended → tilt
   if (indexExt && !middleExt && !ringExt && !pinkyExt) return 'tilt';
-
-  // Open hand (3+ fingers) → rotate
-  const extCount = [indexExt, middleExt, ringExt, pinkyExt].filter(Boolean).length;
-  if (extCount >= 3) return 'rotate';
 
   return 'rotate';
 }
@@ -151,7 +157,7 @@ export class HandTracker {
     py = py / palmIdx.length;
 
     const pinchDist = d2(lm[THUMB_TIP], lm[INDEX_TIP]);
-    const gesture = classifyGesture(lm);
+    const gesture = classifyGesture(lm, this.lastState.gesture);
     const score = results.multiHandedness?.[0]?.score ?? 1;
 
     this.lastState = {
