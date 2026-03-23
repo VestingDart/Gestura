@@ -13,7 +13,11 @@ export interface HandState {
   /** Pinch distance in normalized coords */
   pinchDistance: number;
   confidence: number;
+  /** Primary hand landmarks (used for gesture controls) */
   landmarks: NormalizedLandmarkList | null;
+  /** All detected hands' landmarks (for drawing) */
+  allLandmarks: NormalizedLandmarkList[];
+  handsDetected: number;
 }
 
 type HandCallback = (state: HandState) => void;
@@ -86,6 +90,8 @@ export class HandTracker {
       pinchDistance: 1,
       confidence: 0,
       landmarks: null,
+      allLandmarks: [],
+      handsDetected: 0,
     };
 
     const config: HandsConfig = {
@@ -96,10 +102,10 @@ export class HandTracker {
     this.handsInstance = new Hands(config);
 
     const options: HandsOptions = {
-      maxNumHands: 1,
+      maxNumHands: 2,
       modelComplexity: 1,
-      minDetectionConfidence: 0.7,
-      minTrackingConfidence: 0.5,
+      minDetectionConfidence: 0.5,
+      minTrackingConfidence: 0.4,
     };
     this.handsInstance.setOptions(options);
     this.handsInstance.onResults((results: HandResults) => this.onResults(results));
@@ -125,6 +131,8 @@ export class HandTracker {
         pinchDistance: 1,
         confidence: 0,
         landmarks: null,
+        allLandmarks: [],
+        handsDetected: 0,
       };
       this.callback(this.lastState);
       return;
@@ -154,6 +162,8 @@ export class HandTracker {
       pinchDistance: pinchDist,
       confidence: score,
       landmarks: lm,
+      allLandmarks: results.multiHandLandmarks,
+      handsDetected: results.multiHandLandmarks.length,
     };
 
     this.callback(this.lastState);
