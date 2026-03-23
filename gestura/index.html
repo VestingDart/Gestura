@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>GESTURA</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>✋</text></svg>" />
+    <!-- MediaPipe must load as classic scripts before the ES module -->
+    <script src="/mediapipe/camera_utils.js"></script>
+    <script src="/mediapipe/hands.js"></script>
+  </head>
+  <body>
+    <div id="app">
+      <!-- Webcam feed -->
+      <video id="webcam" autoplay muted playsinline></video>
+      <!-- Hand skeleton overlay -->
+      <canvas id="hand-canvas"></canvas>
+      <!-- Three.js canvas -->
+      <canvas id="three-canvas"></canvas>
+      <!-- UI overlay -->
+      <div id="ui-overlay">
+        <div id="header">
+          <span class="logo">GESTURA</span>
+          <span class="tagline">hand-tracked 3D</span>
+        </div>
+        <div id="status-panel">
+          <div class="status-row">
+            <span class="label">HAND</span>
+            <span id="status-hand" class="value off">NOT DETECTED</span>
+          </div>
+          <div class="status-row">
+            <span class="label">GESTURE</span>
+            <span id="status-gesture" class="value">AUTO-ROTATE</span>
+          </div>
+          <div class="status-row">
+            <span class="label">CONFIDENCE</span>
+            <span id="status-confidence" class="value">--</span>
+          </div>
+        </div>
+        <div id="controls-panel">
+          <div class="control-row">
+            <label class="ctrl-label" for="shape-select">SHAPE</label>
+            <select id="shape-select">
+              <option value="Box">Box</option>
+              <option value="Sphere">Sphere</option>
+              <option value="Torus" selected>Torus</option>
+              <option value="Octahedron">Octahedron</option>
+              <option value="Icosahedron">Icosahedron</option>
+              <option value="Cone">Cone</option>
+            </select>
+          </div>
+          <div class="control-row">
+            <label class="ctrl-label" for="color-select">COLOR</label>
+            <select id="color-select">
+              <option value="#00d4ff">Cyan</option>
+              <option value="#4488ff">Blue</option>
+              <option value="#ff4466">Red</option>
+              <option value="#44ff88">Green</option>
+              <option value="#ffaa00">Orange</option>
+              <option value="#cc44ff">Purple</option>
+              <option value="#ffffff">White</option>
+            </select>
+          </div>
+          <button id="reset-btn">RESET</button>
+        </div>
+        <div id="gesture-legend">
+          <div class="legend-item"><span class="icon">✋</span><span>Open hand → Rotate X/Y</span></div>
+          <div class="legend-item"><span class="icon">🤏</span><span>Pinch → Zoom</span></div>
+          <div class="legend-item"><span class="icon">☝️</span><span>Index only → Tilt Z</span></div>
+          <div class="legend-item"><span class="icon">🔄</span><span>No hand → Auto-rotate</span></div>
+        </div>
+      </div>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
