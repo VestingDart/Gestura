@@ -1,97 +1,97 @@
 # Gestura
 
-> **Hinweis: Dieses Projekt befindet sich noch in der frühen Entwicklungsphase. Viele Features sind noch nicht fertig oder können sich noch stark verändern.**
+> **Note: This project is still in early development. Many features are not yet finished and things may change significantly.**
 
-Gestura ist eine webbasierte 3D-App, die deine Webcam nutzt, um Handgesten zu erkennen und damit eine interaktive 3D-Szene zu steuern. Mithilfe von MediaPipe (Google) werden deine Handbewegungen in Echtzeit getrackt und auf ein 3D-Objekt übertragen, das du im Browser siehst.
+Gestura is a web-based 3D app that uses your webcam to detect hand gestures and control an interactive 3D scene. Using MediaPipe (Google), your hand movements are tracked in real time and mapped to a 3D object rendered in the browser.
 
 ---
 
 ## Features
 
-- Echtzeit-Handerkennung via Webcam (MediaPipe)
-- 3D-Objekte mit Three.js rendern und per Geste steuern
-- Visualisierung des Hand-Skeletts als Canvas-Overlay
-- Verschiedene 3D-Formen wählbar (Würfel, Kugel, Torus, ...)
-- Farbe des Objekts anpassbar
+- Real-time hand tracking via webcam (MediaPipe)
+- 3D objects rendered and controlled with Three.js
+- Hand skeleton overlay visualized on a canvas
+- Multiple 3D shapes to choose from (cube, sphere, torus, ...)
+- Adjustable object color
 
-## Gesten-Steuerung
+## Gesture Controls
 
-| Geste | Aktion |
+| Gesture | Action |
 |---|---|
-| Offene Hand | Objekt in X/Y-Achse rotieren |
-| Pinch (Daumen + Zeigefinger) | Zoom rein/raus |
-| Nur Zeigefinger ausgestreckt | Z-Achse kippen |
-| Keine Hand erkannt | Objekt dreht sich automatisch |
+| Open hand | Rotate object on X/Y axis |
+| Pinch (thumb + index finger) | Zoom in/out |
+| Index finger only | Tilt object on Z axis |
+| No hand detected | Object auto-rotates |
 
 ---
 
 ## Tech Stack
 
 - **Vite** + **TypeScript**
-- **Three.js** — 3D-Rendering
-- **MediaPipe Hands** — Handerkennung via ML
+- **Three.js** — 3D rendering
+- **MediaPipe Hands** — ML-based hand tracking
 
 ---
 
-## Voraussetzungen
+## Requirements
 
-- [Node.js](https://nodejs.org/) (inkl. npm)
+- [Node.js](https://nodejs.org/) (includes npm)
 - Webcam
-- Moderner Browser mit WebGL- und Kamera-Unterstützung (Chrome empfohlen)
+- Modern browser with WebGL and camera support (Chrome recommended)
 
 ---
 
-## Installation & Start
+## Installation & Setup
 
 ```bash
-# In den Projektordner wechseln
+# Navigate to the project folder
 cd gestura
 
-# Abhängigkeiten installieren
+# Install dependencies
 npm install
 
-# Dev-Server starten
+# Start the dev server
 npm run dev
 ```
 
-Danach die angezeigte URL (z.B. `http://localhost:5173`) im Browser öffnen und Kamerazugriff erlauben.
+Then open the URL shown in the terminal (e.g. `http://localhost:5173`) and allow camera access.
 
-### Weitere Befehle
+### Other Commands
 
 ```bash
-# Produktions-Build erstellen
+# Create a production build
 npm run build
 
-# Produktions-Build lokal vorschauen
+# Preview the production build locally
 npm run preview
 ```
 
 ---
 
-## Projektstruktur
+## Project Structure
 
 ```
 Gestura/
 └── gestura/
     ├── public/
-    │   └── mediapipe/       # MediaPipe Library-Dateien
+    │   └── mediapipe/         # MediaPipe library files
     └── src/
-        ├── main.ts          # Einstiegspunkt, Render-Loop
-        ├── HandTracker.ts   # Gestenerkennung & Landmark-Verarbeitung
-        ├── Scene3D.ts       # Three.js Szene & 3D-Objekte
-        ├── GestureControls.ts # Gesten → Kamera/Rotations-Steuerung
-        ├── HandCanvas.ts    # Hand-Skelett als Canvas-Overlay
-        └── ui.ts            # UI-Panel & Event-Handler
+        ├── main.ts            # Entry point, render loop
+        ├── HandTracker.ts     # Gesture detection & landmark processing
+        ├── Scene3D.ts         # Three.js scene & 3D objects
+        ├── GestureControls.ts # Gestures → camera/rotation controls
+        ├── HandCanvas.ts      # Hand skeleton canvas overlay
+        └── ui.ts              # UI panel & event handlers
 ```
 
 ---
 
 ## Status
 
-Das Projekt steht noch ganz am Anfang. Aktuell funktioniert die grundlegende Gestenerkennung und 3D-Steuerung. Geplante Erweiterungen sind noch nicht umgesetzt.
+The project is still at a very early stage. Basic gesture recognition and 3D controls are working. Planned features have not been implemented yet.
 
 ---
 
-## Lizenz
+## License
 
-Noch keine Lizenz festgelegt.
+No license defined yet.
