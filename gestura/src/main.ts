@@ -36,6 +36,8 @@ let currentHand: HandState = {
   pinchDistance: 1,
   confidence: 0,
   landmarks: null,
+  allLandmarks: [],
+  handsDetected: 0,
 };
 
 // Start hand tracking (side-effectful — tracker drives currentHand via callback)
@@ -50,7 +52,7 @@ function loop(): void {
   scene.setZoom(ctrl.fov);
   scene.render();
 
-  handCanvas.drawSkeleton(currentHand.landmarks, currentHand.pinchDistance);
+  handCanvas.drawSkeleton(currentHand.allLandmarks, currentHand.pinchDistance);
   ui.update(currentHand);
 
   requestAnimationFrame(loop);

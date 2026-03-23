@@ -43,7 +43,7 @@ export class UI {
 
   update(hand: HandState): void {
     if (hand.detected) {
-      this.handEl.textContent = 'DETECTED';
+      this.handEl.textContent = hand.handsDetected === 2 ? 'DETECTED (x2)' : 'DETECTED';
       this.handEl.classList.remove('off');
       this.handEl.classList.add('on');
       this.gestureEl.textContent = GESTURE_LABELS[hand.gesture] ?? hand.gesture.toUpperCase();

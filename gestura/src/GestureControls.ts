@@ -10,9 +10,9 @@ export interface ControlState {
 const FOV_MIN = 15;
 const FOV_MAX = 90;
 const AUTO_ROTATE_SPEED = 0.004;
-const ROTATE_SENSITIVITY = 2.5;
-const TILT_SENSITIVITY = 2.5;
-const PINCH_ZOOM_SENSITIVITY = 80; // fov degrees per unit of pinch dist change
+const ROTATE_SENSITIVITY = 5.5;
+const TILT_SENSITIVITY = 5.5;
+const PINCH_ZOOM_SENSITIVITY = 160;
 
 export class GestureControls {
   private rotX = 0;

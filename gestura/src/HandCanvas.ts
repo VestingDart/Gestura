@@ -27,10 +27,17 @@ export class HandCanvas {
     this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
   }
 
-  drawSkeleton(landmarks: NormalizedLandmarkList | null, pinchDistance: number): void {
+  drawSkeleton(allLandmarks: NormalizedLandmarkList[], pinchDistance: number): void {
     this.clear();
-    if (!landmarks) return;
+    if (allLandmarks.length === 0) return;
 
+    // Draw all detected hands; primary hand (index 0) gets the pinch indicator
+    for (let hi = 0; hi < allLandmarks.length; hi++) {
+      this.drawHand(allLandmarks[hi], hi === 0 ? pinchDistance : 1);
+    }
+  }
+
+  private drawHand(landmarks: NormalizedLandmarkList, pinchDistance: number): void {
     const w = this.canvas.width;
     const h = this.canvas.height;
 
@@ -42,7 +49,7 @@ export class HandCanvas {
 
     const ctx = this.ctx;
 
-    // Draw bones using global HAND_CONNECTIONS
+    // Draw bones
     ctx.lineWidth = 2;
     ctx.strokeStyle = BONE_COLOR;
     for (const [start, end] of HAND_CONNECTIONS) {
@@ -71,7 +78,6 @@ export class HandCanvas {
     const midY = (thumbPx.y + indexPx.y) / 2;
     const distPx = Math.hypot(thumbPx.x - indexPx.x, thumbPx.y - indexPx.y);
 
-    // Dashed or solid line
     ctx.lineWidth = isPinching ? 3 : 1.5;
     ctx.strokeStyle = isPinching ? PINCH_COLOR_CLOSED : PINCH_COLOR_OPEN;
     ctx.setLineDash(isPinching ? [] : [6, 4]);
@@ -81,7 +87,6 @@ export class HandCanvas {
     ctx.stroke();
     ctx.setLineDash([]);
 
-    // Pinch zone circle
     const circleR = Math.max(8, distPx / 2);
     ctx.beginPath();
     ctx.arc(midX, midY, circleR, 0, Math.PI * 2);
