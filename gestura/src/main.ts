@@ -6,7 +6,7 @@ import { GestureControls } from './GestureControls';
 import { HandCanvas } from './HandCanvas';
 import { UI } from './ui';
 
-// Local type mirrors GestureControls.ControlState — defined here to bypass stale TS-server cache
+// Local types mirror actual class signatures — defined here to bypass stale TS-server cache
 interface Ctrl {
   objects:     { posX: number; posY: number; rotX: number; rotY: number; rotZ: number }[];
   activeIndex: number;
@@ -27,9 +27,13 @@ const videoEl       = document.getElementById('webcam')        as HTMLVideoEleme
 const handCanvasEl  = document.getElementById('hand-canvas')   as HTMLCanvasElement;
 const threeCanvasEl = document.getElementById('three-canvas')  as HTMLCanvasElement;
 
+interface HandCanvasLike {
+  drawSkeleton(lm: { x: number; y: number; z: number }[][], gesture: string, primary: { x: number; y: number; z: number }[] | null): void;
+}
+
 // ── Subsystems ───────────────────────────────────────────────────────────────
 const scene      = new Scene3D(threeCanvasEl);
-const handCanvas = new HandCanvas(handCanvasEl);
+const handCanvas = new HandCanvas(handCanvasEl) as unknown as HandCanvasLike;
 const controls   = new GestureControls() as unknown as Controls;
 const ui         = new UI();
 
