@@ -38,12 +38,21 @@ export class HandCanvas {
     this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
   }
 
-  drawSkeleton(allLandmarks: NormalizedLandmarkList[], gesture: GestureMode): void {
+  drawSkeleton(
+    allLandmarks: NormalizedLandmarkList[],
+    gesture: GestureMode,
+    primaryLm: NormalizedLandmarkList | null,
+  ): void {
     this.clear();
     if (allLandmarks.length === 0) return;
 
     for (const lm of allLandmarks) {
-      this.drawHand(lm, gesture);
+      // When one hand grabs and the other is idle, color the idle hand differently
+      const handGesture =
+        gesture === 'grab' && allLandmarks.length >= 2 && lm !== primaryLm
+          ? 'idle'
+          : gesture;
+      this.drawHand(lm, handGesture);
     }
 
     if (gesture === 'scale' && allLandmarks.length >= 2) {

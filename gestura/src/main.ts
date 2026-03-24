@@ -88,7 +88,7 @@ function loop(): void {
   scene.setFov(ctrl.fov);
   scene.render();
 
-  handCanvas.drawSkeleton(currentHand.allLandmarks, currentHand.gesture);
+  handCanvas.drawSkeleton(currentHand.allLandmarks, currentHand.gesture, currentHand.landmarks);
   ui.update(currentHand, ctrl.activeIndex, controls.objectCount);
 
   requestAnimationFrame(loop);

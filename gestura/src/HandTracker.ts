@@ -85,16 +85,31 @@ function wristRollAngle(lm: NormalizedLandmarkList): number {
   return Math.atan2(dy, dx);
 }
 
+interface ClassifyResult {
+  gesture:    GestureMode;
+  primaryIdx: number;   // index into allLm to use as the primary (controlling) hand
+  fist1:      boolean;
+  fist2:      boolean;
+}
+
 function classifyGesture(
   allLm: NormalizedLandmarkList[],
   prevFist1: boolean,
   prevFist2: boolean,
-): GestureMode {
-  if (allLm.length === 0) return 'none';
+): ClassifyResult {
+  if (allLm.length === 0) return { gesture: 'none', primaryIdx: 0, fist1: false, fist2: false };
+
   const fist1 = isFist(allLm[0], prevFist1);
-  if (allLm.length >= 2 && fist1 && isFist(allLm[1], prevFist2)) return 'scale';
-  if (fist1) return 'grab';
-  return 'idle';
+  const fist2 = allLm.length >= 2 ? isFist(allLm[1], prevFist2) : false;
+
+  // Both fists → two-hand scale/zoom mode (hand[0] stays primary for midpoint calc)
+  if (allLm.length >= 2 && fist1 && fist2) return { gesture: 'scale', primaryIdx: 0, fist1, fist2 };
+  // Hand[0] is a fist → grab with hand[0] as primary
+  if (fist1) return { gesture: 'grab', primaryIdx: 0, fist1, fist2 };
+  // Hand[0] is idle but hand[1] is a fist → use hand[1] as primary for grab
+  if (fist2) return { gesture: 'grab', primaryIdx: 1, fist1, fist2 };
+  // No fist at all
+  return { gesture: 'idle', primaryIdx: 0, fist1, fist2 };
 }
 
 const EMPTY_STATE: HandState = {
@@ -159,9 +174,17 @@ export class HandTracker {
     }
 
     const allLm = results.multiHandLandmarks;
-    const lm = allLm[0];
-    const { px, py } = palmCenter(lm);
 
+    const { gesture, primaryIdx, fist1, fist2 } = classifyGesture(allLm, this.prevFist1, this.prevFist2);
+    // Track per-hand fist state independently so hysteresis works correctly
+    this.prevFist1 = fist1;
+    this.prevFist2 = fist2;
+
+    // Primary hand drives position/rotation; in scale mode hand[0] is always primary
+    const primaryLm = allLm[primaryIdx];
+    const { px, py } = palmCenter(primaryLm);
+
+    // Second hand palm center — used only by scale mode (always hand[1])
     let palmX2 = 0, palmY2 = 0;
     if (allLm.length >= 2) {
       const c2 = palmCenter(allLm[1]);
@@ -169,10 +192,7 @@ export class HandTracker {
       palmY2 = c2.py;
     }
 
-    const gesture = classifyGesture(allLm, this.prevFist1, this.prevFist2);
-    this.prevFist1 = gesture === 'grab' || gesture === 'scale';
-    this.prevFist2 = gesture === 'scale';
-    const score = results.multiHandedness?.[0]?.score ?? 1;
+    const score = results.multiHandedness?.[primaryIdx]?.score ?? results.multiHandedness?.[0]?.score ?? 1;
 
     this.lastState = {
       detected: true,
@@ -181,10 +201,10 @@ export class HandTracker {
       palmY: py,
       palmX2,
       palmY2,
-      wristAngle: wristRollAngle(lm),
-      pinchDistance: d2(lm[THUMB_TIP], lm[INDEX_TIP]),
+      wristAngle: wristRollAngle(primaryLm),
+      pinchDistance: d2(primaryLm[THUMB_TIP], primaryLm[INDEX_TIP]),
       confidence: score,
-      landmarks: lm,
+      landmarks: primaryLm,
       allLandmarks: allLm,
       handsDetected: allLm.length,
     };
