@@ -156,7 +156,7 @@ html, body {
   width: 240px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
   backdrop-filter: blur(12px);
   pointer-events: auto;
 }
@@ -217,6 +217,33 @@ select:focus {
 
 #reset-btn:active {
   background: rgba(0, 212, 255, 0.2);
+}
+
+#add-obj-btn {
+  background: transparent;
+  border: 1px solid rgba(68, 255, 136, 0.4);
+  border-radius: 4px;
+  color: var(--color-scale);
+  font-family: var(--font);
+  font-size: 0.72rem;
+  letter-spacing: 0.15em;
+  padding: 7px;
+  cursor: pointer;
+  transition: background 0.15s, box-shadow 0.15s, opacity 0.15s;
+  pointer-events: auto;
+}
+
+#add-obj-btn:hover:not(:disabled) {
+  background: rgba(68, 255, 136, 0.1);
+  box-shadow: 0 0 12px rgba(68, 255, 136, 0.3);
+}
+
+#add-obj-btn:active:not(:disabled) {
+  background: rgba(68, 255, 136, 0.2);
+}
+
+#add-obj-btn:disabled {
+  cursor: not-allowed;
 }
 
 /* ── Controls guide (bottom-left) ────────────────────────────────────────── */

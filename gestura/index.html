@@ -5,19 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>GESTURA</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>✋</text></svg>" />
-    <!-- MediaPipe must load as classic scripts before the ES module -->
     <script src="/mediapipe/camera_utils.js"></script>
     <script src="/mediapipe/hands.js"></script>
   </head>
   <body>
     <div id="app">
-      <!-- Webcam feed -->
       <video id="webcam" autoplay muted playsinline></video>
-      <!-- Hand skeleton overlay -->
       <canvas id="hand-canvas"></canvas>
-      <!-- Three.js canvas -->
       <canvas id="three-canvas"></canvas>
-      <!-- UI overlay -->
       <div id="ui-overlay">
         <div id="header">
           <span class="logo">GESTURA</span>
@@ -31,6 +26,10 @@
           <div class="status-row">
             <span class="label">GESTURE</span>
             <span id="status-gesture" class="value">AUTO-ROTATE</span>
+          </div>
+          <div class="status-row">
+            <span class="label">OBJECT</span>
+            <span id="status-object" class="value">1</span>
           </div>
           <div class="status-row">
             <span class="label">CONFIDENCE</span>
@@ -61,10 +60,10 @@
               <option value="#ffffff">White</option>
             </select>
           </div>
+          <button id="add-obj-btn">+ ADD OBJECT</button>
           <button id="reset-btn">RESET</button>
         </div>
 
-        <!-- Controls guide — bottom left -->
         <div id="controls-guide">
           <div class="guide-title">HOW TO CONTROL</div>
 
@@ -84,11 +83,27 @@
             </div>
           </div>
 
+          <div class="guide-item gesture-grab">
+            <span class="guide-dot"></span>
+            <div class="guide-text">
+              <span class="guide-name">⟿ THROW</span>
+              <span class="guide-desc">Release while moving · object glides with momentum</span>
+            </div>
+          </div>
+
+          <div class="guide-item gesture-grab">
+            <span class="guide-dot"></span>
+            <div class="guide-text">
+              <span class="guide-name">✊✊ SNAP TO CENTER</span>
+              <span class="guide-desc">Double-tap fist quickly · snaps object back to origin</span>
+            </div>
+          </div>
+
           <div class="guide-item gesture-scale">
             <span class="guide-dot"></span>
             <div class="guide-text">
-              <span class="guide-name">✊✊ SCALE</span>
-              <span class="guide-desc">Two fists · pull apart to grow · push together to shrink</span>
+              <span class="guide-name">✊✊ ZOOM</span>
+              <span class="guide-desc">Two fists · pull apart to zoom in · push together to zoom out</span>
             </div>
           </div>
 

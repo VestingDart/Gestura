@@ -2,6 +2,11 @@ import * as THREE from 'three';
 
 export type ShapeName = 'Box' | 'Sphere' | 'Torus' | 'Octahedron' | 'Icosahedron' | 'Cone';
 
+interface SceneObject {
+  mesh: THREE.Mesh;
+  wire: THREE.Mesh;
+}
+
 function createGeometry(shape: ShapeName): THREE.BufferGeometry {
   switch (shape) {
     case 'Box':         return new THREE.BoxGeometry(1.4, 1.4, 1.4);
@@ -16,28 +21,20 @@ function createGeometry(shape: ShapeName): THREE.BufferGeometry {
 
 export class Scene3D {
   private renderer: THREE.WebGLRenderer;
-  private scene: THREE.Scene;
-  private camera: THREE.PerspectiveCamera;
-  private mesh: THREE.Mesh;
-  private wireframe: THREE.Mesh;
-  private currentColor: number = 0x00d4ff;
+  private scene:    THREE.Scene;
+  private camera:   THREE.PerspectiveCamera;
+  private objects:  SceneObject[] = [];
 
   constructor(canvas: HTMLCanvasElement) {
-    this.renderer = new THREE.WebGLRenderer({
-      canvas,
-      antialias: true,
-      alpha: true,
-    });
+    this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
     this.renderer.setPixelRatio(window.devicePixelRatio);
     this.renderer.setSize(window.innerWidth, window.innerHeight);
     this.renderer.setClearColor(0x000000, 0);
 
-    this.scene = new THREE.Scene();
-
+    this.scene  = new THREE.Scene();
     this.camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
     this.camera.position.set(0, 0, 5);
 
-    // Lighting
     const ambientLight = new THREE.AmbientLight(0x112244, 1.5);
     this.scene.add(ambientLight);
 
@@ -53,60 +50,80 @@ export class Scene3D {
     rimLight.position.set(0, -5, -5);
     this.scene.add(rimLight);
 
-    // Initial shape
-    const geo = createGeometry('Torus');
-    const mat = new THREE.MeshPhongMaterial({
-      color: this.currentColor,
-      emissive: new THREE.Color(this.currentColor).multiplyScalar(0.15),
-      shininess: 120,
-      specular: 0xffffff,
-    });
-    this.mesh = new THREE.Mesh(geo, mat);
-
-    const wireMat = new THREE.MeshBasicMaterial({
-      color: this.currentColor,
-      wireframe: true,
-      transparent: true,
-      opacity: 0.18,
-    });
-    this.wireframe = new THREE.Mesh(geo.clone(), wireMat);
-
-    this.scene.add(this.mesh);
-    this.scene.add(this.wireframe);
+    // Start with one default object
+    this.addObject('Torus', '#00d4ff');
 
     window.addEventListener('resize', () => this.onResize());
   }
 
-  setShape(name: ShapeName): void {
-    const geo = createGeometry(name);
-    this.mesh.geometry.dispose();
-    this.mesh.geometry = geo;
-    this.wireframe.geometry.dispose();
-    this.wireframe.geometry = geo.clone();
+  get objectCount(): number { return this.objects.length; }
+
+  addObject(shape: ShapeName, colorHex: string): void {
+    const color = parseInt(colorHex.replace('#', ''), 16);
+    const geo   = createGeometry(shape);
+    const mat   = new THREE.MeshPhongMaterial({
+      color,
+      emissive: new THREE.Color(color).multiplyScalar(0.15),
+      shininess: 120,
+      specular: 0xffffff,
+    });
+    const wireMat = new THREE.MeshBasicMaterial({
+      color, wireframe: true, transparent: true, opacity: 0.18,
+    });
+    const mesh = new THREE.Mesh(geo, mat);
+    const wire = new THREE.Mesh(geo.clone(), wireMat);
+    this.scene.add(mesh);
+    this.scene.add(wire);
+    this.objects.push({ mesh, wire });
   }
 
-  setColor(hex: string): void {
-    this.currentColor = parseInt(hex.replace('#', ''), 16);
-    (this.mesh.material as THREE.MeshPhongMaterial).color.setHex(this.currentColor);
-    (this.mesh.material as THREE.MeshPhongMaterial).emissive
-      .setHex(this.currentColor)
-      .multiplyScalar(0.15);
-    (this.wireframe.material as THREE.MeshBasicMaterial).color.setHex(this.currentColor);
+  removeObject(index: number): void {
+    if (index < 0 || index >= this.objects.length) return;
+    const { mesh, wire } = this.objects[index];
+    this.scene.remove(mesh);
+    this.scene.remove(wire);
+    mesh.geometry.dispose();
+    wire.geometry.dispose();
+    (mesh.material as THREE.Material).dispose();
+    (wire.material as THREE.Material).dispose();
+    this.objects.splice(index, 1);
   }
 
-  setPosition(x: number, y: number): void {
-    this.mesh.position.set(x, y, 0);
-    this.wireframe.position.set(x, y, 0);
+  updateObjects(
+    states: { posX: number; posY: number; rotX: number; rotY: number; rotZ: number }[],
+  ): void {
+    for (let i = 0; i < Math.min(states.length, this.objects.length); i++) {
+      const { mesh, wire } = this.objects[i];
+      const s = states[i];
+      mesh.position.set(s.posX, s.posY, 0);
+      wire.position.set(s.posX, s.posY, 0);
+      mesh.rotation.set(s.rotX, s.rotY, s.rotZ);
+      wire.rotation.set(s.rotX, s.rotY, s.rotZ);
+    }
   }
 
-  setRotation(x: number, y: number, z: number): void {
-    this.mesh.rotation.set(x, y, z);
-    this.wireframe.rotation.set(x, y, z);
+  setObjectShape(index: number, shape: ShapeName): void {
+    if (index < 0 || index >= this.objects.length) return;
+    const geo = createGeometry(shape);
+    const { mesh, wire } = this.objects[index];
+    mesh.geometry.dispose();
+    mesh.geometry = geo;
+    wire.geometry.dispose();
+    wire.geometry = geo.clone();
   }
 
-  setScale(s: number): void {
-    this.mesh.scale.setScalar(s);
-    this.wireframe.scale.setScalar(s);
+  setObjectColor(index: number, hex: string): void {
+    if (index < 0 || index >= this.objects.length) return;
+    const color = parseInt(hex.replace('#', ''), 16);
+    const { mesh, wire } = this.objects[index];
+    (mesh.material as THREE.MeshPhongMaterial).color.setHex(color);
+    (mesh.material as THREE.MeshPhongMaterial).emissive.setHex(color).multiplyScalar(0.15);
+    (wire.material as THREE.MeshBasicMaterial).color.setHex(color);
+  }
+
+  setFov(fov: number): void {
+    this.camera.fov = fov;
+    this.camera.updateProjectionMatrix();
   }
 
   render(): void {
