@@ -26,7 +26,8 @@ const MOVE_SENSITIVITY     = 4.0;
 const ROLL_SENSITIVITY     = 0.8;
 const TWO_HAND_ROTATE_SENS = 1.0;
 const FOV_ZOOM_SENSITIVITY = 120;
-const INERTIA_DECAY        = 0.95;
+const INERTIA_DECAY        = 0.72;   // fast decay → minimal glide
+const INERTIA_VEL_CAP      = 0.04;   // max velocity per frame (scene units)
 const FOV_MIN              = 15;
 const FOV_MAX              = 90;
 const MAX_OBJECTS          = 3;
@@ -55,10 +56,14 @@ export class GestureControls {
   private lockedGesture: GestureMode = 'none';
   private lockFramesLeft = 0;
 
-  private lastGrabTime = 0;
-  private prevGrabTime = 0;
+  private lastGrabTime  = 0;
+  private prevGrabTime  = 0;
+  private inertiaEnabled = true;
 
   get objectCount(): number { return this.objects.length; }
+
+  setInertia(enabled: boolean): void { this.inertiaEnabled = enabled; }
+  get inertia(): boolean { return this.inertiaEnabled; }
 
   addObject(): void {
     if (this.objects.length >= MAX_OBJECTS) return;
@@ -80,9 +85,14 @@ export class GestureControls {
     // Detect grab release → capture inertia velocity
     if ((rawGesture === 'none' || rawGesture === 'idle') && this.prevGesture === 'grab') {
       const obj = this.objects[this.activeIndex];
-      obj.velX    = avg(this.recentDx);
-      obj.velY    = avg(this.recentDy);
-      obj.velRotZ = avg(this.recentDRotZ);
+      if (this.inertiaEnabled) {
+        const cap = INERTIA_VEL_CAP;
+        obj.velX    = Math.max(-cap, Math.min(cap, avg(this.recentDx)));
+        obj.velY    = Math.max(-cap, Math.min(cap, avg(this.recentDy)));
+        obj.velRotZ = Math.max(-cap, Math.min(cap, avg(this.recentDRotZ)));
+      } else {
+        obj.velX = 0; obj.velY = 0; obj.velRotZ = 0;
+      }
     }
 
     if (rawGesture === 'none' || rawGesture === 'idle') {

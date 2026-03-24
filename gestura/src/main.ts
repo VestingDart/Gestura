@@ -17,7 +17,9 @@ interface Controls {
   getState(): Ctrl;
   reset(): void;
   addObject(): void;
+  setInertia(enabled: boolean): void;
   readonly objectCount: number;
+  readonly inertia: boolean;
 }
 
 // ── Element references ──────────────────────────────────────────────────────
@@ -45,6 +47,14 @@ ui.onAddObject = () => {
   controls.addObject();
   scene.addObject(shapeSelect.value as any, colorSelect.value);
 };
+const inertiaBtn = document.getElementById('inertia-btn') as HTMLButtonElement;
+inertiaBtn.addEventListener('click', () => {
+  const next = !controls.inertia;
+  controls.setInertia(next);
+  inertiaBtn.textContent  = next ? 'GLIDE: ON' : 'GLIDE: OFF';
+  inertiaBtn.classList.toggle('active', next);
+});
+
 ui.onReset = () => {
   controls.reset();
   while (scene.objectCount > 1) scene.removeObject(scene.objectCount - 1);

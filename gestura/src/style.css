@@ -246,6 +246,30 @@ select:focus {
   cursor: not-allowed;
 }
 
+#inertia-btn {
+  background: transparent;
+  border: 1px solid rgba(200, 232, 248, 0.25);
+  border-radius: 4px;
+  color: rgba(200, 232, 248, 0.4);
+  font-family: var(--font);
+  font-size: 0.72rem;
+  letter-spacing: 0.15em;
+  padding: 7px;
+  cursor: pointer;
+  transition: background 0.15s, box-shadow 0.15s, color 0.15s, border-color 0.15s;
+  pointer-events: auto;
+}
+
+#inertia-btn.active {
+  border-color: rgba(255, 149, 0, 0.5);
+  color: var(--color-grab);
+  box-shadow: 0 0 8px rgba(255, 149, 0, 0.2);
+}
+
+#inertia-btn:hover {
+  background: rgba(200, 232, 248, 0.06);
+}
+
 /* ── Controls guide (bottom-left) ────────────────────────────────────────── */
 #controls-guide {
   grid-column: 1;
