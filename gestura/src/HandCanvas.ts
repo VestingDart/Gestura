@@ -1,25 +1,36 @@
 import type { NormalizedLandmarkList } from './mediapipe-globals';
 
+type GestureMode = 'none' | 'idle' | 'grab' | 'scale';
+
+// ── Gesture colour palette (must match CSS variables) ────────────────────────
+const COLORS = {
+  idle:  { joint: 'rgba(136, 153, 204, 0.9)', bone: 'rgba(100, 120, 180, 0.55)', glow: 'rgba(136, 153, 204, 0.35)' },
+  grab:  { joint: 'rgba(255, 149,   0, 0.9)', bone: 'rgba(220, 120,   0, 0.55)', glow: 'rgba(255, 149,   0, 0.38)' },
+  scale: { joint: 'rgba( 68, 255, 136, 0.9)', bone: 'rgba( 50, 210, 100, 0.55)', glow: 'rgba( 68, 255, 136, 0.35)' },
+} as const;
+
 const JOINT_RADIUS = 4;
-const JOINT_COLOR = 'rgba(0, 212, 255, 0.9)';
-const BONE_COLOR = 'rgba(0, 180, 220, 0.6)';
-const PINCH_COLOR_OPEN = 'rgba(0, 212, 255, 0.5)';
-const PINCH_COLOR_CLOSED = 'rgba(255, 80, 80, 0.85)';
-const PINCH_THRESHOLD = 0.07;
+const PALM_IDX     = [0, 1, 5, 9, 13, 17];
+
+function gestureColors(gesture: GestureMode) {
+  if (gesture === 'grab')  return COLORS.grab;
+  if (gesture === 'scale') return COLORS.scale;
+  return COLORS.idle;
+}
 
 export class HandCanvas {
-  private canvas: HTMLCanvasElement;
-  private ctx: CanvasRenderingContext2D;
+  private readonly canvas: HTMLCanvasElement;
+  private readonly ctx: CanvasRenderingContext2D;
 
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
-    this.ctx = canvas.getContext('2d')!;
+    this.ctx    = canvas.getContext('2d')!;
     this.resize();
     window.addEventListener('resize', () => this.resize());
   }
 
   resize(): void {
-    this.canvas.width = window.innerWidth;
+    this.canvas.width  = window.innerWidth;
     this.canvas.height = window.innerHeight;
   }
 
@@ -27,31 +38,37 @@ export class HandCanvas {
     this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
   }
 
-  drawSkeleton(allLandmarks: NormalizedLandmarkList[], pinchDistance: number): void {
+  drawSkeleton(allLandmarks: NormalizedLandmarkList[], gesture: GestureMode): void {
     this.clear();
     if (allLandmarks.length === 0) return;
 
-    // Draw all detected hands; primary hand (index 0) gets the pinch indicator
-    for (let hi = 0; hi < allLandmarks.length; hi++) {
-      this.drawHand(allLandmarks[hi], hi === 0 ? pinchDistance : 1);
+    for (const lm of allLandmarks) {
+      this.drawHand(lm, gesture);
+    }
+
+    if (gesture === 'scale' && allLandmarks.length >= 2) {
+      this.drawScaleBridge(allLandmarks[0], allLandmarks[1]);
     }
   }
 
-  private drawHand(landmarks: NormalizedLandmarkList, pinchDistance: number): void {
-    const w = this.canvas.width;
-    const h = this.canvas.height;
+  private palmScreenPos(lm: NormalizedLandmarkList): { x: number; y: number } {
+    const w = this.canvas.width, h = this.canvas.height;
+    let px = 0, py = 0;
+    for (const i of PALM_IDX) { px += lm[i].x; py += lm[i].y; }
+    return { x: (1 - px / PALM_IDX.length) * w, y: (py / PALM_IDX.length) * h };
+  }
 
-    // Flip X to match mirrored video
-    const px = (lm: { x: number; y: number }) => ({
-      x: (1 - lm.x) * w,
-      y: lm.y * h,
-    });
-
+  private drawHand(landmarks: NormalizedLandmarkList, gesture: GestureMode): void {
+    const w   = this.canvas.width, h = this.canvas.height;
+    const col = gestureColors(gesture);
     const ctx = this.ctx;
 
-    // Draw bones
-    ctx.lineWidth = 2;
-    ctx.strokeStyle = BONE_COLOR;
+    // Flip X to match mirrored video
+    const px = (lm: { x: number; y: number }) => ({ x: (1 - lm.x) * w, y: lm.y * h });
+
+    // Bones
+    ctx.lineWidth   = gesture === 'idle' ? 2 : 2.5;
+    ctx.strokeStyle = col.bone;
     for (const [start, end] of HAND_CONNECTIONS) {
       const a = px(landmarks[start]);
       const b = px(landmarks[end]);
@@ -61,49 +78,62 @@ export class HandCanvas {
       ctx.stroke();
     }
 
-    // Draw joints
+    // Joints
     for (let i = 0; i < landmarks.length; i++) {
       const p = px(landmarks[i]);
       ctx.beginPath();
       ctx.arc(p.x, p.y, JOINT_RADIUS, 0, Math.PI * 2);
-      ctx.fillStyle = JOINT_COLOR;
+      ctx.fillStyle = col.joint;
       ctx.fill();
     }
 
-    // Pinch indicator between thumb tip (4) and index tip (8)
-    const thumbPx = px(landmarks[4]);
-    const indexPx = px(landmarks[8]);
-    const isPinching = pinchDistance < PINCH_THRESHOLD;
-    const midX = (thumbPx.x + indexPx.x) / 2;
-    const midY = (thumbPx.y + indexPx.y) / 2;
-    const distPx = Math.hypot(thumbPx.x - indexPx.x, thumbPx.y - indexPx.y);
-
-    ctx.lineWidth = isPinching ? 3 : 1.5;
-    ctx.strokeStyle = isPinching ? PINCH_COLOR_CLOSED : PINCH_COLOR_OPEN;
-    ctx.setLineDash(isPinching ? [] : [6, 4]);
-    ctx.beginPath();
-    ctx.moveTo(thumbPx.x, thumbPx.y);
-    ctx.lineTo(indexPx.x, indexPx.y);
-    ctx.stroke();
-    ctx.setLineDash([]);
-
-    const circleR = Math.max(8, distPx / 2);
-    ctx.beginPath();
-    ctx.arc(midX, midY, circleR, 0, Math.PI * 2);
-    ctx.strokeStyle = isPinching ? PINCH_COLOR_CLOSED : PINCH_COLOR_OPEN;
-    ctx.lineWidth = 1.5;
-    ctx.stroke();
-
-    // Glow on fingertips
+    // Fingertip glow
     for (const tipIdx of [4, 8, 12, 16, 20]) {
-      const p = px(landmarks[tipIdx]);
-      const grad = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, 12);
-      grad.addColorStop(0, 'rgba(0, 212, 255, 0.4)');
-      grad.addColorStop(1, 'rgba(0, 212, 255, 0)');
+      const p    = px(landmarks[tipIdx]);
+      const grad = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, 14);
+      grad.addColorStop(0, col.glow);
+      grad.addColorStop(1, 'rgba(0,0,0,0)');
       ctx.beginPath();
-      ctx.arc(p.x, p.y, 12, 0, Math.PI * 2);
+      ctx.arc(p.x, p.y, 14, 0, Math.PI * 2);
       ctx.fillStyle = grad;
       ctx.fill();
     }
+
+    // Active ring around palm
+    if (gesture === 'grab' || gesture === 'scale') {
+      const center = this.palmScreenPos(landmarks);
+      ctx.beginPath();
+      ctx.arc(center.x, center.y, 28, 0, Math.PI * 2);
+      ctx.strokeStyle = col.joint;
+      ctx.lineWidth   = 2;
+      ctx.setLineDash([6, 4]);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+  }
+
+  private drawScaleBridge(lm1: NormalizedLandmarkList, lm2: NormalizedLandmarkList): void {
+    const c1  = this.palmScreenPos(lm1);
+    const c2  = this.palmScreenPos(lm2);
+    const col = COLORS.scale;
+    const ctx = this.ctx;
+
+    ctx.beginPath();
+    ctx.moveTo(c1.x, c1.y);
+    ctx.lineTo(c2.x, c2.y);
+    ctx.strokeStyle = col.bone;
+    ctx.lineWidth   = 2;
+    ctx.setLineDash([8, 5]);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    const mx = (c1.x + c2.x) / 2;
+    const my = (c1.y + c2.y) / 2;
+    const r  = Math.hypot(c2.x - c1.x, c2.y - c1.y) / 2;
+    ctx.beginPath();
+    ctx.arc(mx, my, r, 0, Math.PI * 2);
+    ctx.strokeStyle = 'rgba(68, 255, 136, 0.18)';
+    ctx.lineWidth   = 1.5;
+    ctx.stroke();
   }
 }

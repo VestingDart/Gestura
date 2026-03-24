@@ -63,11 +63,58 @@
           </div>
           <button id="reset-btn">RESET</button>
         </div>
-        <div id="gesture-legend">
-          <div class="legend-item"><span class="icon">✋</span><span>Open hand → Rotate X/Y</span></div>
-          <div class="legend-item"><span class="icon">🤏</span><span>Pinch → Zoom</span></div>
-          <div class="legend-item"><span class="icon">☝️</span><span>Index only → Tilt Z</span></div>
-          <div class="legend-item"><span class="icon">🔄</span><span>No hand → Auto-rotate</span></div>
+
+        <!-- Controls guide — bottom left -->
+        <div id="controls-guide">
+          <div class="guide-title">HOW TO CONTROL</div>
+
+          <div class="guide-item gesture-grab">
+            <span class="guide-dot"></span>
+            <div class="guide-text">
+              <span class="guide-name">✊ GRAB &amp; MOVE</span>
+              <span class="guide-desc">Close fist · move hand to translate object</span>
+            </div>
+          </div>
+
+          <div class="guide-item gesture-grab">
+            <span class="guide-dot"></span>
+            <div class="guide-text">
+              <span class="guide-name">🔄 ROTATE</span>
+              <span class="guide-desc">Twist wrist while grabbing · rolls object on Z-axis</span>
+            </div>
+          </div>
+
+          <div class="guide-item gesture-scale">
+            <span class="guide-dot"></span>
+            <div class="guide-text">
+              <span class="guide-name">✊✊ SCALE</span>
+              <span class="guide-desc">Two fists · pull apart to grow · push together to shrink</span>
+            </div>
+          </div>
+
+          <div class="guide-item gesture-scale">
+            <span class="guide-dot"></span>
+            <div class="guide-text">
+              <span class="guide-name">🎡 TWO-HAND ROTATE</span>
+              <span class="guide-desc">Two fists · turn like a steering wheel · rotates Y-axis</span>
+            </div>
+          </div>
+
+          <div class="guide-item gesture-idle">
+            <span class="guide-dot"></span>
+            <div class="guide-text">
+              <span class="guide-name">✋ IDLE</span>
+              <span class="guide-desc">Open hand · pauses interaction</span>
+            </div>
+          </div>
+
+          <div class="guide-item gesture-none">
+            <span class="guide-dot"></span>
+            <div class="guide-text">
+              <span class="guide-name">🔁 AUTO-ROTATE</span>
+              <span class="guide-desc">No hand detected · object spins automatically</span>
+            </div>
+          </div>
         </div>
       </div>
     </div>

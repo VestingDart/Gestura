@@ -4,20 +4,13 @@ export type ShapeName = 'Box' | 'Sphere' | 'Torus' | 'Octahedron' | 'Icosahedron
 
 function createGeometry(shape: ShapeName): THREE.BufferGeometry {
   switch (shape) {
-    case 'Box':
-      return new THREE.BoxGeometry(1.4, 1.4, 1.4);
-    case 'Sphere':
-      return new THREE.SphereGeometry(0.9, 64, 64);
-    case 'Torus':
-      return new THREE.TorusGeometry(0.8, 0.32, 32, 100);
-    case 'Octahedron':
-      return new THREE.OctahedronGeometry(1.1);
-    case 'Icosahedron':
-      return new THREE.IcosahedronGeometry(1.0);
-    case 'Cone':
-      return new THREE.ConeGeometry(0.9, 1.8, 64);
-    default:
-      return new THREE.BoxGeometry(1.4, 1.4, 1.4);
+    case 'Box':         return new THREE.BoxGeometry(1.4, 1.4, 1.4);
+    case 'Sphere':      return new THREE.SphereGeometry(0.9, 64, 64);
+    case 'Torus':       return new THREE.TorusGeometry(0.8, 0.32, 32, 100);
+    case 'Octahedron':  return new THREE.OctahedronGeometry(1.1);
+    case 'Icosahedron': return new THREE.IcosahedronGeometry(1.0);
+    case 'Cone':        return new THREE.ConeGeometry(0.9, 1.8, 64);
+    default:            return new THREE.BoxGeometry(1.4, 1.4, 1.4);
   }
 }
 
@@ -101,22 +94,19 @@ export class Scene3D {
     (this.wireframe.material as THREE.MeshBasicMaterial).color.setHex(this.currentColor);
   }
 
+  setPosition(x: number, y: number): void {
+    this.mesh.position.set(x, y, 0);
+    this.wireframe.position.set(x, y, 0);
+  }
+
   setRotation(x: number, y: number, z: number): void {
     this.mesh.rotation.set(x, y, z);
     this.wireframe.rotation.set(x, y, z);
   }
 
-  getRotation(): THREE.Euler {
-    return this.mesh.rotation.clone();
-  }
-
-  setZoom(fov: number): void {
-    this.camera.fov = fov;
-    this.camera.updateProjectionMatrix();
-  }
-
-  getFov(): number {
-    return this.camera.fov;
+  setScale(s: number): void {
+    this.mesh.scale.setScalar(s);
+    this.wireframe.scale.setScalar(s);
   }
 
   render(): void {

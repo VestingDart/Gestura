@@ -14,6 +14,12 @@
   --text: #c8e8f8;
   --dim: rgba(0, 212, 255, 0.45);
   --font: 'Courier New', 'Lucida Console', monospace;
+
+  /* Gesture colours */
+  --color-none:  #00d4ff;   /* auto-rotate  – cyan        */
+  --color-idle:  #8899cc;   /* open hand    – blue-gray   */
+  --color-grab:  #ff9500;   /* grab & move  – orange      */
+  --color-scale: #44ff88;   /* scale        – green       */
 }
 
 html, body {
@@ -213,27 +219,84 @@ select:focus {
   background: rgba(0, 212, 255, 0.2);
 }
 
-/* ── Gesture legend (bottom-left) ────────────────────────────────────────── */
-#gesture-legend {
+/* ── Controls guide (bottom-left) ────────────────────────────────────────── */
+#controls-guide {
   grid-column: 1;
   grid-row: 3;
   align-self: end;
+  background: var(--panel-bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 12px 14px;
+  width: 290px;
   display: flex;
   flex-direction: column;
-  gap: 5px;
+  gap: 7px;
+  backdrop-filter: blur(12px);
   pointer-events: none;
 }
 
-.legend-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 0.65rem;
-  letter-spacing: 0.05em;
-  color: rgba(200, 232, 248, 0.5);
+.guide-title {
+  font-size: 0.62rem;
+  letter-spacing: 0.18em;
+  color: var(--dim);
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 6px;
+  margin-bottom: 2px;
 }
 
-.legend-item .icon { font-size: 0.9rem; }
+.guide-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding-left: 6px;
+  border-left: 2px solid transparent;
+  transition: border-color 0.2s;
+}
+
+/* Left colour bar per gesture */
+.gesture-none  { border-left-color: var(--color-none);  }
+.gesture-idle  { border-left-color: var(--color-idle);  }
+.gesture-grab  { border-left-color: var(--color-grab);  }
+.gesture-scale { border-left-color: var(--color-scale); }
+
+.guide-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  margin-top: 3px;
+}
+
+.gesture-none  .guide-dot { background: var(--color-none);  box-shadow: 0 0 5px var(--color-none);  }
+.gesture-idle  .guide-dot { background: var(--color-idle);  box-shadow: 0 0 5px var(--color-idle);  }
+.gesture-grab  .guide-dot { background: var(--color-grab);  box-shadow: 0 0 5px var(--color-grab);  }
+.gesture-scale .guide-dot { background: var(--color-scale); box-shadow: 0 0 5px var(--color-scale); }
+
+.guide-text {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.guide-name {
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+}
+
+.gesture-none  .guide-name { color: var(--color-none);  }
+.gesture-idle  .guide-name { color: var(--color-idle);  }
+.gesture-grab  .guide-name { color: var(--color-grab);  }
+.gesture-scale .guide-name { color: var(--color-scale); }
+
+.guide-desc {
+  font-size: 0.58rem;
+  letter-spacing: 0.04em;
+  color: rgba(200, 232, 248, 0.45);
+  line-height: 1.4;
+}
 
 /* ── Scanline effect ──────────────────────────────────────────────────────── */
 #app::after {

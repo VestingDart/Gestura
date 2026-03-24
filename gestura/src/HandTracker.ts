@@ -2,7 +2,7 @@ import type { NormalizedLandmarkList, HandResults, HandsConfig, HandsOptions, Ca
 
 export type { NormalizedLandmarkList };
 
-export type GestureMode = 'rotate' | 'pinch' | 'tilt' | 'none';
+export type GestureMode = 'none' | 'idle' | 'grab' | 'scale';
 
 export interface HandState {
   detected: boolean;
@@ -10,12 +10,15 @@ export interface HandState {
   /** Normalized palm center [0..1], X already flipped for mirror display */
   palmX: number;
   palmY: number;
-  /** Pinch distance in normalized coords */
+  /** Second hand palm center (valid when handsDetected >= 2) */
+  palmX2: number;
+  palmY2: number;
+  /** Roll angle of primary hand wrist in radians (wrist→middle-MCP vector) */
+  wristAngle: number;
+  /** Raw thumb–index distance, kept for HandCanvas compatibility */
   pinchDistance: number;
   confidence: number;
-  /** Primary hand landmarks (used for gesture controls) */
   landmarks: NormalizedLandmarkList | null;
-  /** All detected hands' landmarks (for drawing) */
   allLandmarks: NormalizedLandmarkList[];
   handsDetected: number;
 }
@@ -23,20 +26,18 @@ export interface HandState {
 type HandCallback = (state: HandState) => void;
 
 // Landmark indices
-const WRIST = 0;
-const INDEX_TIP = 8;
-const INDEX_MCP = 5;
+const WRIST      = 0;
+const INDEX_TIP  = 8;
+const INDEX_MCP  = 5;
 const MIDDLE_TIP = 12;
 const MIDDLE_MCP = 9;
-const RING_TIP = 16;
-const RING_MCP = 13;
-const PINKY_TIP = 20;
-const PINKY_MCP = 17;
-const THUMB_TIP = 4;
+const RING_TIP   = 16;
+const RING_MCP   = 13;
+const PINKY_TIP  = 20;
+const PINKY_MCP  = 17;
+const THUMB_TIP  = 4;
 
-// Pinch thresholds with hysteresis — enter at 0.11, exit at 0.16
-const PINCH_ENTER = 0.11;
-const PINCH_EXIT = 0.16;
+const PALM_IDX = [0, 1, 5, 9, 13, 17];
 
 type Pt = { x: number; y: number };
 
@@ -48,57 +49,78 @@ function isExtended(tip: Pt, mcp: Pt, wrist: Pt): boolean {
   return d2(tip, wrist) > d2(mcp, wrist) * 1.2;
 }
 
-function classifyGesture(lm: NormalizedLandmarkList, currentGesture: GestureMode): GestureMode {
+const FINGERS: [number, number][] = [
+  [INDEX_TIP,  INDEX_MCP],
+  [MIDDLE_TIP, MIDDLE_MCP],
+  [RING_TIP,   RING_MCP],
+  [PINKY_TIP,  PINKY_MCP],
+];
+
+function curledCount(lm: NormalizedLandmarkList): number {
   const wrist = lm[WRIST];
-  const thumbTip = lm[THUMB_TIP];
-  const indexTip = lm[INDEX_TIP];
-  const indexMcp = lm[INDEX_MCP];
-  const middleTip = lm[MIDDLE_TIP];
-  const middleMcp = lm[MIDDLE_MCP];
-  const ringTip = lm[RING_TIP];
-  const ringMcp = lm[RING_MCP];
-  const pinkyTip = lm[PINKY_TIP];
-  const pinkyMcp = lm[PINKY_MCP];
-
-  const pinchDist = d2(thumbTip, indexTip);
-
-  // Hysteresis: use different thresholds to enter vs exit pinch mode
-  if (currentGesture === 'pinch') {
-    if (pinchDist < PINCH_EXIT) return 'pinch';
-  } else {
-    if (pinchDist < PINCH_ENTER) return 'pinch';
-  }
-
-  const indexExt = isExtended(indexTip, indexMcp, wrist);
-  const middleExt = isExtended(middleTip, middleMcp, wrist);
-  const ringExt = isExtended(ringTip, ringMcp, wrist);
-  const pinkyExt = isExtended(pinkyTip, pinkyMcp, wrist);
-
-  // Only index finger extended → tilt
-  if (indexExt && !middleExt && !ringExt && !pinkyExt) return 'tilt';
-
-  return 'rotate';
+  return FINGERS.filter(([tip, mcp]) => !isExtended(lm[tip], lm[mcp], wrist)).length;
 }
+
+/**
+ * Fist detection with hysteresis:
+ * - Enter fist mode when ≥3 fingers are curled
+ * - Stay in fist mode as long as ≥2 fingers are still curled
+ */
+function isFist(lm: NormalizedLandmarkList, prevFist: boolean): boolean {
+  const n = curledCount(lm);
+  return prevFist ? n >= 2 : n >= 3;
+}
+
+/** Compute normalized palm center; X is flipped for mirror display */
+function palmCenter(lm: NormalizedLandmarkList): { px: number; py: number } {
+  let px = 0, py = 0;
+  for (const i of PALM_IDX) { px += lm[i].x; py += lm[i].y; }
+  return { px: 1 - px / PALM_IDX.length, py: py / PALM_IDX.length };
+}
+
+/** Roll angle of the hand (wrist→middle-MCP) in mirror-flipped screen space */
+function wristRollAngle(lm: NormalizedLandmarkList): number {
+  const dx = -(lm[MIDDLE_MCP].x - lm[WRIST].x); // flip X for mirror
+  const dy =   lm[MIDDLE_MCP].y - lm[WRIST].y;
+  return Math.atan2(dy, dx);
+}
+
+function classifyGesture(
+  allLm: NormalizedLandmarkList[],
+  prevFist1: boolean,
+  prevFist2: boolean,
+): GestureMode {
+  if (allLm.length === 0) return 'none';
+  const fist1 = isFist(allLm[0], prevFist1);
+  if (allLm.length >= 2 && fist1 && isFist(allLm[1], prevFist2)) return 'scale';
+  if (fist1) return 'grab';
+  return 'idle';
+}
+
+const EMPTY_STATE: HandState = {
+  detected: false,
+  gesture: 'none',
+  palmX: 0.5, palmY: 0.5,
+  palmX2: 0,  palmY2: 0,
+  wristAngle: 0,
+  pinchDistance: 1,
+  confidence: 0,
+  landmarks: null,
+  allLandmarks: [],
+  handsDetected: 0,
+};
 
 export class HandTracker {
   private handsInstance: InstanceType<typeof Hands>;
   private cameraInstance: InstanceType<typeof Camera>;
   private callback: HandCallback;
   private lastState: HandState;
+  private prevFist1 = false;
+  private prevFist2 = false;
 
   constructor(videoEl: HTMLVideoElement, callback: HandCallback) {
     this.callback = callback;
-    this.lastState = {
-      detected: false,
-      gesture: 'none',
-      palmX: 0.5,
-      palmY: 0.5,
-      pinchDistance: 1,
-      confidence: 0,
-      landmarks: null,
-      allLandmarks: [],
-      handsDetected: 0,
-    };
+    this.lastState = { ...EMPTY_STATE };
 
     const config: HandsConfig = {
       locateFile: (file: string) =>
@@ -129,35 +151,27 @@ export class HandTracker {
 
   private onResults(results: HandResults): void {
     if (!results.multiHandLandmarks || results.multiHandLandmarks.length === 0) {
-      this.lastState = {
-        detected: false,
-        gesture: 'none',
-        palmX: 0.5,
-        palmY: 0.5,
-        pinchDistance: 1,
-        confidence: 0,
-        landmarks: null,
-        allLandmarks: [],
-        handsDetected: 0,
-      };
+      this.lastState = { ...EMPTY_STATE };
+      this.prevFist1 = false;
+      this.prevFist2 = false;
       this.callback(this.lastState);
       return;
     }
 
-    const lm = results.multiHandLandmarks[0];
+    const allLm = results.multiHandLandmarks;
+    const lm = allLm[0];
+    const { px, py } = palmCenter(lm);
 
-    // Palm center: average of wrist + knuckle landmarks, then flip X for mirror
-    const palmIdx = [0, 1, 5, 9, 13, 17];
-    let px = 0, py = 0;
-    for (const i of palmIdx) {
-      px += lm[i].x;
-      py += lm[i].y;
+    let palmX2 = 0, palmY2 = 0;
+    if (allLm.length >= 2) {
+      const c2 = palmCenter(allLm[1]);
+      palmX2 = c2.px;
+      palmY2 = c2.py;
     }
-    px = 1 - (px / palmIdx.length);
-    py = py / palmIdx.length;
 
-    const pinchDist = d2(lm[THUMB_TIP], lm[INDEX_TIP]);
-    const gesture = classifyGesture(lm, this.lastState.gesture);
+    const gesture = classifyGesture(allLm, this.prevFist1, this.prevFist2);
+    this.prevFist1 = gesture === 'grab' || gesture === 'scale';
+    this.prevFist2 = gesture === 'scale';
     const score = results.multiHandedness?.[0]?.score ?? 1;
 
     this.lastState = {
@@ -165,11 +179,14 @@ export class HandTracker {
       gesture,
       palmX: px,
       palmY: py,
-      pinchDistance: pinchDist,
+      palmX2,
+      palmY2,
+      wristAngle: wristRollAngle(lm),
+      pinchDistance: d2(lm[THUMB_TIP], lm[INDEX_TIP]),
       confidence: score,
       landmarks: lm,
-      allLandmarks: results.multiHandLandmarks,
-      handsDetected: results.multiHandLandmarks.length,
+      allLandmarks: allLm,
+      handsDetected: allLm.length,
     };
 
     this.callback(this.lastState);
