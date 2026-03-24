@@ -2,7 +2,7 @@ import type { NormalizedLandmarkList, HandResults, HandsConfig, HandsOptions, Ca
 
 export type { NormalizedLandmarkList };
 
-export type GestureMode = 'none' | 'idle' | 'grab' | 'scale';
+export type GestureMode = 'none' | 'idle' | 'grab' | 'scale' | 'pinch3';
 
 export interface HandState {
   detected: boolean;
@@ -38,6 +38,10 @@ const PINKY_MCP  = 17;
 const THUMB_TIP  = 4;
 
 const PALM_IDX = [0, 1, 5, 9, 13, 17];
+
+// Three-finger pinch thresholds (normalized screen distance)
+const PINCH3_ENTER = 0.065;
+const PINCH3_EXIT  = 0.090;
 
 type Pt = { x: number; y: number };
 
@@ -78,6 +82,16 @@ function palmCenter(lm: NormalizedLandmarkList): { px: number; py: number } {
   return { px: 1 - px / PALM_IDX.length, py: py / PALM_IDX.length };
 }
 
+/** True when thumb, index, and middle tips are all pinched together */
+function isPinch3(lm: NormalizedLandmarkList, prev: boolean): boolean {
+  const thr = prev ? PINCH3_EXIT : PINCH3_ENTER;
+  return (
+    d2(lm[THUMB_TIP], lm[INDEX_TIP])  < thr &&
+    d2(lm[INDEX_TIP], lm[MIDDLE_TIP]) < thr &&
+    d2(lm[THUMB_TIP], lm[MIDDLE_TIP]) < thr
+  );
+}
+
 /** Roll angle of the hand (wrist→middle-MCP) in mirror-flipped screen space */
 function wristRollAngle(lm: NormalizedLandmarkList): number {
   const dx = -(lm[MIDDLE_MCP].x - lm[WRIST].x); // flip X for mirror
@@ -90,26 +104,37 @@ interface ClassifyResult {
   primaryIdx: number;   // index into allLm to use as the primary (controlling) hand
   fist1:      boolean;
   fist2:      boolean;
+  pinch3_1:   boolean;
+  pinch3_2:   boolean;
 }
 
 function classifyGesture(
   allLm: NormalizedLandmarkList[],
   prevFist1: boolean,
   prevFist2: boolean,
+  prevPinch3_1: boolean,
+  prevPinch3_2: boolean,
 ): ClassifyResult {
-  if (allLm.length === 0) return { gesture: 'none', primaryIdx: 0, fist1: false, fist2: false };
+  if (allLm.length === 0) {
+    return { gesture: 'none', primaryIdx: 0, fist1: false, fist2: false, pinch3_1: false, pinch3_2: false };
+  }
 
-  const fist1 = isFist(allLm[0], prevFist1);
-  const fist2 = allLm.length >= 2 ? isFist(allLm[1], prevFist2) : false;
+  const fist1    = isFist(allLm[0], prevFist1);
+  const fist2    = allLm.length >= 2 ? isFist(allLm[1], prevFist2) : false;
+  // pinch3 only fires when the hand is not already a fist
+  const pinch3_1 = !fist1 && isPinch3(allLm[0], prevPinch3_1);
+  const pinch3_2 = allLm.length >= 2 && !fist2 && isPinch3(allLm[1], prevPinch3_2);
 
-  // Both fists → two-hand scale/zoom mode (hand[0] stays primary for midpoint calc)
-  if (allLm.length >= 2 && fist1 && fist2) return { gesture: 'scale', primaryIdx: 0, fist1, fist2 };
-  // Hand[0] is a fist → grab with hand[0] as primary
-  if (fist1) return { gesture: 'grab', primaryIdx: 0, fist1, fist2 };
-  // Hand[0] is idle but hand[1] is a fist → use hand[1] as primary for grab
-  if (fist2) return { gesture: 'grab', primaryIdx: 1, fist1, fist2 };
-  // No fist at all
-  return { gesture: 'idle', primaryIdx: 0, fist1, fist2 };
+  // Both fists → two-hand scale/zoom mode
+  if (allLm.length >= 2 && fist1 && fist2) return { gesture: 'scale',  primaryIdx: 0, fist1, fist2, pinch3_1, pinch3_2 };
+  // Fist(s) → grab
+  if (fist1) return { gesture: 'grab',   primaryIdx: 0, fist1, fist2, pinch3_1, pinch3_2 };
+  if (fist2) return { gesture: 'grab',   primaryIdx: 1, fist1, fist2, pinch3_1, pinch3_2 };
+  // Three-finger pinch → select & move
+  if (pinch3_1) return { gesture: 'pinch3', primaryIdx: 0, fist1, fist2, pinch3_1, pinch3_2 };
+  if (pinch3_2) return { gesture: 'pinch3', primaryIdx: 1, fist1, fist2, pinch3_1, pinch3_2 };
+  // Open hand
+  return { gesture: 'idle', primaryIdx: 0, fist1, fist2, pinch3_1, pinch3_2 };
 }
 
 const EMPTY_STATE: HandState = {
@@ -130,8 +155,10 @@ export class HandTracker {
   private cameraInstance: InstanceType<typeof Camera>;
   private callback: HandCallback;
   private lastState: HandState;
-  private prevFist1 = false;
-  private prevFist2 = false;
+  private prevFist1    = false;
+  private prevFist2    = false;
+  private prevPinch3_1 = false;
+  private prevPinch3_2 = false;
 
   constructor(videoEl: HTMLVideoElement, callback: HandCallback) {
     this.callback = callback;
@@ -167,18 +194,24 @@ export class HandTracker {
   private onResults(results: HandResults): void {
     if (!results.multiHandLandmarks || results.multiHandLandmarks.length === 0) {
       this.lastState = { ...EMPTY_STATE };
-      this.prevFist1 = false;
-      this.prevFist2 = false;
+      this.prevFist1    = false;
+      this.prevFist2    = false;
+      this.prevPinch3_1 = false;
+      this.prevPinch3_2 = false;
       this.callback(this.lastState);
       return;
     }
 
     const allLm = results.multiHandLandmarks;
 
-    const { gesture, primaryIdx, fist1, fist2 } = classifyGesture(allLm, this.prevFist1, this.prevFist2);
-    // Track per-hand fist state independently so hysteresis works correctly
-    this.prevFist1 = fist1;
-    this.prevFist2 = fist2;
+    const { gesture, primaryIdx, fist1, fist2, pinch3_1, pinch3_2 } = classifyGesture(
+      allLm, this.prevFist1, this.prevFist2, this.prevPinch3_1, this.prevPinch3_2,
+    );
+    // Track per-hand states independently so hysteresis works correctly
+    this.prevFist1    = fist1;
+    this.prevFist2    = fist2;
+    this.prevPinch3_1 = pinch3_1;
+    this.prevPinch3_2 = pinch3_2;
 
     // Primary hand drives position/rotation; in scale mode hand[0] is always primary
     const primaryLm = allLm[primaryIdx];

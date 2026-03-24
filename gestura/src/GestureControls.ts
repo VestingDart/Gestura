@@ -82,8 +82,8 @@ export class GestureControls {
   update(hand: HandState, aspect: number): ControlState {
     const rawGesture: GestureMode = hand.detected ? hand.gesture : 'none';
 
-    // Detect grab release → capture inertia velocity
-    if ((rawGesture === 'none' || rawGesture === 'idle') && this.prevGesture === 'grab') {
+    // Detect grab/pinch3 release → capture inertia velocity
+    if ((rawGesture === 'none' || rawGesture === 'idle') && (this.prevGesture === 'grab' || this.prevGesture === 'pinch3')) {
       const obj = this.objects[this.activeIndex];
       if (this.inertiaEnabled) {
         const cap = INERTIA_VEL_CAP;
@@ -131,8 +131,8 @@ export class GestureControls {
       this.clearPrev();
     }
 
-    if (gesture === 'grab') {
-      // On new grab: pick nearest object, check for double-tap snap
+    if (gesture === 'grab' || gesture === 'pinch3') {
+      // On new grab/pinch3: pick nearest object, check for double-tap snap
       if (gesture !== this.prevGesture) {
         this.activeIndex = this.nearestObject(hand.palmX, hand.palmY, aspect);
         this.prevGrabTime = this.lastGrabTime;

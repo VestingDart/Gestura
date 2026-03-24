@@ -1,20 +1,22 @@
 import type { NormalizedLandmarkList } from './mediapipe-globals';
 
-type GestureMode = 'none' | 'idle' | 'grab' | 'scale';
+type GestureMode = 'none' | 'idle' | 'grab' | 'scale' | 'pinch3';
 
 // ── Gesture colour palette (must match CSS variables) ────────────────────────
 const COLORS = {
-  idle:  { joint: 'rgba(136, 153, 204, 0.9)', bone: 'rgba(100, 120, 180, 0.55)', glow: 'rgba(136, 153, 204, 0.35)' },
-  grab:  { joint: 'rgba(255, 149,   0, 0.9)', bone: 'rgba(220, 120,   0, 0.55)', glow: 'rgba(255, 149,   0, 0.38)' },
-  scale: { joint: 'rgba( 68, 255, 136, 0.9)', bone: 'rgba( 50, 210, 100, 0.55)', glow: 'rgba( 68, 255, 136, 0.35)' },
+  idle:   { joint: 'rgba(136, 153, 204, 0.9)', bone: 'rgba(100, 120, 180, 0.55)', glow: 'rgba(136, 153, 204, 0.35)' },
+  grab:   { joint: 'rgba(255, 149,   0, 0.9)', bone: 'rgba(220, 120,   0, 0.55)', glow: 'rgba(255, 149,   0, 0.38)' },
+  scale:  { joint: 'rgba( 68, 255, 136, 0.9)', bone: 'rgba( 50, 210, 100, 0.55)', glow: 'rgba( 68, 255, 136, 0.35)' },
+  pinch3: { joint: 'rgba(220,  80, 255, 0.9)', bone: 'rgba(180,  50, 220, 0.55)', glow: 'rgba(220,  80, 255, 0.38)' },
 } as const;
 
 const JOINT_RADIUS = 4;
 const PALM_IDX     = [0, 1, 5, 9, 13, 17];
 
 function gestureColors(gesture: GestureMode) {
-  if (gesture === 'grab')  return COLORS.grab;
-  if (gesture === 'scale') return COLORS.scale;
+  if (gesture === 'grab')   return COLORS.grab;
+  if (gesture === 'scale')  return COLORS.scale;
+  if (gesture === 'pinch3') return COLORS.pinch3;
   return COLORS.idle;
 }
 
@@ -49,7 +51,7 @@ export class HandCanvas {
     for (const lm of allLandmarks) {
       // When one hand grabs and the other is idle, color the idle hand differently
       const handGesture =
-        gesture === 'grab' && allLandmarks.length >= 2 && lm !== primaryLm
+        (gesture === 'grab' || gesture === 'pinch3') && allLandmarks.length >= 2 && lm !== primaryLm
           ? 'idle'
           : gesture;
       this.drawHand(lm, handGesture);
@@ -109,7 +111,7 @@ export class HandCanvas {
     }
 
     // Active ring around palm
-    if (gesture === 'grab' || gesture === 'scale') {
+    if (gesture === 'grab' || gesture === 'scale' || gesture === 'pinch3') {
       const center = this.palmScreenPos(landmarks);
       ctx.beginPath();
       ctx.arc(center.x, center.y, 28, 0, Math.PI * 2);
